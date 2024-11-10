@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Tracker</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8, #cfd9df);
+            height: 100vh;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* Align items at the top */
+            overflow: hidden;
+        }
+
+        #messagesTable, #directionTable {
+            margin: 20px;
+            border-collapse: collapse;
+            width: 25%;
+            max-width: 250px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            border: 1px solid #010000;
+            padding: 8px;
+            text-align: center
+        }
+
+        th {
+            background-color: rgba(0, 150, 255, 0.8);
+            color: white;
+        }
+
+        #trackButton {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 10; /* Keep button on top */
+        }
+
+        .popup {
+            position: absolute;
+            background: rgba(0, 150, 255, 0.8);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            transition: opacity 0.1s ease;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        #movementLog {
+            margin: 20px;
+            max-width: 250px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            height: 200px; /* Fixed height for scrolling */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="popupMessage" class="popup"></div>
+    <table id="messagesTable">
+        <thead>
+            <tr>
+                <th>X</th>
+                <th>Y</th>
+            </tr>
+        </thead>
+        <tbody id="messages"></tbody>
+    </table>
+
+    <table id="directionTable">
+        <thead>
+            <tr>
+                <th>Direction</th>
+            </tr>
+        </thead>
+        <tbody id="directions"></tbody>
+    </table>
+
+    <button id="trackButton">Start Tracking</button>
+    <div id="movementLog"></div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const directionsDiv = document.getElementById('directions');
+        const trackButton = document.getElementById('trackButton');
+        const popupMessage = document.getElementById('popupMessage');
+        const movementLog = document.getElementById('movementLog');
+
+        let tracking = false;
+        let lastX = null;
+        let lastY = null;
+        let lastTime = Date.now();
+        let startTime = null;
+
+        trackButton.addEventListener('click', () => {
+            tracking = !tracking;
+            trackButton.textContent = tracking ? 'Stop Tracking' : 'Start Tracking';
+
+            if (tracking) {
+                startTime = Date.now();
+                document.addEventListener('mousemove', showMousePosition);
+            } else {
+                document.removeEventListener('mousemove', showMousePosition);
+                directionsDiv.innerHTML = ''; // Clear directions when stopped
+                movementLog.innerHTML = ''; // Clear log when stopped
+            }
+        });
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`; // Format to MM:SS
+        }
+
+        function showMousePosition(event) {
+            const x = event.clientX;
+            const y = event.clientY;
+
+            // Update messages table
+            const row = document.createElement('tr');
+            const xCell = document.createElement('td');
+            const yCell = document.createElement('td');
+
+            xCell.textContent = x;
+            yCell.textContent = y;
+
+            row.appendChild(xCell);
+            row.appendChild(yCell);
+            messagesDiv.prepend(row);
+
+            // Determine direction and movement
+            let directionMessage = '';
+            const currentTime = Date.now();
+            const timeDiff = currentTime - lastTime;
+            const elapsedTime = currentTime - startTime;
+
+            if (lastX !== null && lastY !== null) {
+                const deltaX = x - lastX;
+                const deltaY = y - lastY;
+
+                if (deltaX > 0) {
+                    directionMessage = `Target moved ${deltaX}px right`;
+                    addDirection("Right");
+                } else if (deltaX < 0) {
+                    directionMessage = `Target moved ${Math.abs(deltaX)}px left`;
+                    addDirection("Left");
+                }
+                if (deltaY > 0) {
+                    directionMessage += `, ${deltaY}px down`;
+                    addDirection("Down");
+                } else if (deltaY < 0) {
+                    directionMessage += `, ${Math.abs(deltaY)}px up`;
+                    addDirection("Up");
+                }
+
+                const formattedTime = formatTime(elapsedTime);
+                movementLog.innerHTML = `${directionMessage} at ${formattedTime}<br>` + movementLog.innerHTML; // Prepend new messages
+            }
+
+            // Update last position and time
+            lastX = x;
+            lastY = y;
+            lastTime = currentTime;
+
+            // Show popup
+            popupMessage.textContent = `X: ${x}, Y: ${y}`;
+            popupMessage.style.left = `${x + 10}px`;
+            popupMessage.style.top = `${y + 10}px`;
+            popupMessage.style.opacity = 1;
+
+            setTimeout(() => {
+                popupMessage.style.opacity = 0;
+            }, 1000); // Hide after 1 second
+        }
+
+        function addDirection(direction) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+
+            cell.textContent = direction;
+            row.appendChild(cell);
+            directionsDiv.prepend(row);
+        }
+    </script>
+</body>
+</html>
+<html>
+    
+</html>
